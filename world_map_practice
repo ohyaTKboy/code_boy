@@ -1,0 +1,22 @@
+###_____ R code maternity leave practice______
+
+##___library for map drawing__________________
+library(readxl)
+library(rworldmap)
+
+##____________calling data____________________________
+ori_data <- read_excel("WORLD-MACHE_Gender_6.8.15.xls", "Sheet1", col_names=T)
+
+
+##_____________drawing a world map
+mat_leave <- ori_data[, c(3, 6:24)]
+Maping <- joinCountryData2Map(mat_leave, joinCode = "ISO3", nameJoinColumn = "iso3")
+colors <- c("#FF8000", "#A9D0F5", "#58ACFA", "#0080FF", "#084B8A")
+mapParams <- mapCountryData(mat_leave
+                            , nameColumnToPlot="matleave_13"
+                            , catMethod = "categorical"
+                            , colourPalette = colors
+                            , addLegend='FALSE'
+)
+
+
