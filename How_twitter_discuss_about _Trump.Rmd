@@ -1,0 +1,107 @@
+---
+title: "Twitter: What do you think about Donald Trump?"
+author: "TK Huang"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+# require packages
+
+library(twitteR)
+library(tm)
+library(ggplot2)
+library(wordcloud)
+
+```
+
+
+```{r}
+# set twitter API
+consumer_key <- 'JyxDmlpEeQj7rVIACE3dE44dw'
+consumer_secret <- 'nDutkuVpXTV2ILEAwOuSKahxhOacslYbB5IPuujIm3y9Eeccsa'
+access_token <- '1146265236-Gh8n1vtBOV2NyElF9nppIyXuKieke8wdA716VxP'
+access_secret <- 'SocvDxRJSIQk9nkG5NyYTpSRunZb0eerxoeVCBZRS4828'
+
+setup_twitter_oauth(consumer_key, consumer_secret, access_token, access_secret)
+
+```
+
+```{r}
+# search for trump hashtag and put the result into a data frame
+
+rdmTweets <- searchTwitter('#trump', n=3200)
+
+Tdf <- data.frame()
+for(i in 1:length(rdmTweets)){ 
+  Tdf.next <- as.data.frame(rdmTweets[[i]])
+  Tdf <- rbind(Tdf, Tdf.next)
+  print(i)
+}
+
+View(Tdf)
+```
+
+```{r}
+# clear unuseful words
+
+Tdf$words <- strsplit(Tdf$text, "[^a-zA-Z]+")
+Tdf$words <- sapply(Tdf$words, tolower)
+
+freq <- table(unlist(Tdf$words))
+dim(freq) 
+
+sort(freq, decreasing = T)
+head(sort(freq, decreasing = T))
+
+stopWords <- stopwords("en")
+names(freq) %in% stopWords 
+freq <- freq[!(names(freq) %in% stopWords)]
+length(freq)
+
+freq[order(freq, decreasing=F)]
+
+freq2 <- freq[freq > 10]
+freq2[order(freq2, decreasing=F)]
+length(freq2)
+
+
+freq2 <- freq2[!(names(freq2) %in% c('https', 'co','com', 'will'))] 
+freq2[order(freq2, decreasing=F)]
+
+freq2 <- freq2[nchar(names(freq2))>1] #delete words with only a alphabat
+length(freq2)
+freq2 <- freq2[order(freq2, decreasing=T)]# reordernew frequency
+names(freq2)
+table(freq2)
+freq3 <- subset(freq2, freq2>60) #extract words > 5 characters
+class(freq3)
+freq3<-as.data.frame(freq3)
+View(freq3)
+```
+
+```{r}
+#Visualization, barplot and word cloud
+barfreq3<- ggplot(freq3, aes(x=Var1, y=Freq))+geom_bar(stat="identity",color='#D75455',alpha= 0.5)+xlab("Terms")+ylab("Count") + coord_flip()+theme(axis.text=element_text(size=7)); barfreq3
+
+
+pal <- brewer.pal(9, "BuGn")[-(1:4)]
+
+cloudfreq3<-wordcloud(words = freq3$Var1, freq = freq3$Freq, min.freq = 3,
+          random.order = F, colors = pal); cloudfreq3
+
+
+
+```
+
+
+We can find out that negative phrases and war rhetoric appear more frequently when people talk about Trump, such as war, nazi, betray, syriastrike, missiles etc.
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
