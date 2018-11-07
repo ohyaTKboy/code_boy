@@ -1,0 +1,111 @@
+---
+title: "Comparing Tsai''s speeches"
+author: "TK Huang"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+
+library(jiebaR)
+options(stringsAsFactors = F)
+
+
+# Loading data ------------------------------------------------------------
+
+
+cutter<-worker()
+segment_not <- c("蔡英文", "南向政策") #words which we don't want to split.
+new_user_word(cutter, segment_not) #new jiebaR's wording
+
+# tokenized to files
+cutted2016 <- cutter['tsai_speech_2016.txt'] #一定是中括號
+cutted2017 <- cutter['tsai_speech_2017.txt']
+
+word2016 <- unlist(strsplit(readLines(cutted2016, encoding="UTF-8"), "\\s"))
+word2017 <- unlist(strsplit(readLines(cutted2017, encoding="UTF-8"), "\\s"))
+
+
+print(sprintf("%s", tail(word2016, n=20)))
+print(sprintf("%s", tail(word2017, n=20)))
+
+speech <- rbind(data.frame(word=word2016, year='y2016'), 
+	data.frame(word=word2017, year='y2017'))
+rownames(speech) <- NULL
+speech$word
+
+# Read stopwords ----------------------------------------------------------
+fin <- file("stopwords_tw.txt",open="r") #中文停用詞表
+stopWords <- readLines(fin, encoding="UTF-8")
+stopWords <- unique(stopWords)
+added <- c("ㄟ")
+reserved <- c("我們")
+stopWords <- setdiff(stopWords, reserved)
+stopWords <- union(stopWords, added) 
+
+```
+
+```{r}
+#word counting
+library(stringr)
+library(dplyr)
+library(tidyr)
+
+word_count <- speech %>%
+	filter(!is.na(word)) %>%
+	count(year, word) %>%
+	ungroup() %>%
+	filter(!str_detect(word, "[a-zA-Z0-9]+")) %>%
+	filter(!(word %in% stopWords)) %>%
+	mutate(word = str_replace_all(word, "台灣", "臺灣")) %>%
+	mutate(word = str_replace_all(word, "台灣人", "臺灣人"))
+
+
+
+tsai_source <- spread(word_count, year, n, fill = 0)
+tsai_source <- ungroup(tsai_source)
+tsai_source$y2016 <- (tsai_source$y2016 + 1)/(sum(tsai_source$y2016)+1)
+tsai_source$y2017 <- (tsai_source$y2017 + 1)/(sum(tsai_source$y2017)+1)
+tsai_source$logratio <- log2(tsai_source$y2017/tsai_source$y2016) 
+tsai_source <- tsai_source[order(-tsai_source$logratio), ]
+```
+
+```{r}
+#plot
+library(ggplot2)
+
+toplot <- tsai_source %>%
+  group_by(logratio > 0) %>%
+  top_n(15, abs(logratio)) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, logratio))
+
+ggplot(toplot, aes(word, logratio, fill = logratio < 0)) +
+  geom_bar(stat = "identity") +
+  coord_flip() + 
+  ylab("y2017 / y2016 log ratio") +
+  scale_fill_manual(name = "", labels = c("y2017", "y2016"),
+                    values = c("red", "lightblue"))
+
+```
+
+```{r}
+#word cloud plot
+
+library(wordcloud)
+
+par(mfrow=c(1, 2), mai= c(0.2, 0.1, 0.1, 0.1), family=('Heiti TC Light'))
+wordcloud(tsai_source$word,tsai_source$y2016,min.freq = 0.001,random.order = F,colors = "navy")
+wordcloud(tsai_source$word,tsai_source$y2017,min.freq = 0.001,random.order = F,colors = "red")
+
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).

@@ -1,0 +1,89 @@
+---
+title: "蔡英文粉絲團繪圖分析"
+author: "政研二_r04322027_黃棟冠"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(ggplot2)
+options(stringsAsFactors = F)
+
+```
+
+
+```{r}
+Tsai<-readRDS('posts_tsai.rds')
+
+#蔡英文粉絲團中，發文類型按讚數、以及評論數之關係
+ggplot(Tsai,aes(log(Tsai$likes_count),log(Tsai$comments_count)))+geom_jitter(size=0.5)+geom_smooth(fill='#DB4D6D')
+
+#可發現，按讚數越多，評論數應當也跟著越多
+
+```
+
+```{r}
+#蔡英文粉絲團中，字數與按讚數之間的線性關係
+Tsai$char<-nchar(Tsai$message)
+
+ch<-lm(Tsai$likes_count~Tsai$char)
+summary(ch)
+
+ggplot(Tsai, aes(log(Tsai$likes_count), Tsai$char)) + 
+  geom_jitter(size=0.5) +
+  stat_smooth(method = "lm", col = "red",size=1)
+
+#我們可發現，字數長短與按讚數也具有相當線性關係。
+
+
+
+```
+
+```{r}
+
+#時間做區分
+Tsai$hour <- as.numeric(format(Tsai$created_time,format= '%H'))
+
+#依照蔡英文評論分組
+cres<-kmeans(Tsai$comments_count,3)
+cres$centers #我們可以發現，這三者分組的中心，差距相當大
+Tsai$cluster<-cres$cluster
+
+assignColor <- function(index){
+  if(index <= 1){return("#86A697")}
+  else if(index > 1 && index < 3 ){return("#096148")}
+     else {return("#64363C")}
+}
+
+Tsai$color<-sapply(Tsai$cluster,assignColor)
+
+
+ggplot(Tsai,aes(Tsai$hour,log(Tsai$comments_count)))+geom_jitter(color=Tsai$color)+geom_smooth()+stat_smooth(method = 'lm',color='red')
+
+#我們可發現，以線性關係分析，蔡英文粉絲團的評論數量從早上開始將逐漸增加。但再以geom_smooth繪圖後可發現，早上十二點至五點、早上十點、下午三點以及晚間八點以後，評論的數量較少。
+
+
+
+```
+
+綜觀上述，在蔡英文粉絲團中，我們可以依據數據分析了解蔡英文粉絲專業的經營狀況。
+首先，我們先了解按讚數與評論數的關係，目前來看，按讚數與評論數的多寡似乎有其關聯。
+
+若再融合第二張圖的分析，按讚次數以及字數的關係可發現，按讚次數多者，幾乎集中在五百個字以內。因此，筆者發現閱讀者是否能夠快速接受訊息相當重要。
+
+接著再以第三張圖為分析，筆者在這張圖中，特別挑選評論做比較，因為評論比起按讚與分享，使用者停留在此粉專的時間較長。因此，也可從評論與時間的關係中發現，在蔡英文粉絲專業留下評論者，多在上午九點至晚間八點之間，若想增加粉絲專業的觸及率，挑選此段時間發文較為合適。
+
+因此我們可以得出結論，經營蔡英文粉絲團最恰當的發文方式，即字數不超過五百字，且在上午十點至晚上八點間發出文章，較能有效傳達訊息。
+
+
+
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
