@@ -1,0 +1,138 @@
+---
+title: "What kind of building rental is higher?"
+author: "TK Huang"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+#I extract information from 591 rental website to discuss rental difference of apartment,suite, shared-suite, room, and car parking space.   
+
+```
+
+
+
+
+```{r}
+library(xml2)
+library(httr)
+library(jsonlite)
+
+
+url2 <- "https://rent.591.com.tw/home/search/rsList?is_new_list=1&type=1&kind=0&searchtype=1&region=1"
+res <- fromJSON(url2)
+
+
+res$records  #total row of 591 
+totalRows<-as.numeric(gsub(',','',res$records))
+
+
+alldf <- data.frame()
+
+library(plyr)
+
+
+for(i in 0:(totalRows/30)){
+  pre_url<-"https://rent.591.com.tw/home/search/rsList?is_new_list=1&type=1&kind=0&searchtype=1&region=1"
+  tail<-sprintf("&firstRow=%s&totalRows=%s",i*30,totalRows)#separate the url inorder to extract other information
+  url<-paste0(pre_url,tail)
+  res<-fromJSON(url)
+  alldf<-rbind.fill(alldf,res$data$data)
+  print(url)
+  }
+
+
+
+```
+
+
+```{r}
+#average rental and region difference
+
+alldf$price<-as.numeric(gsub(',','',alldf$price))
+
+rentalave<-tapply(alldf$price,alldf$section_name,mean)
+rentalave #Shilin district is pricier than other district
+View(rentalave)
+
+
+
+
+```
+
+```{r}
+#average rental of different types of building
+
+#apartment
+
+home<-subset(alldf,alldf$kind==1)
+homer<-tapply(home$price,home$section_name,mean)
+View(homer)
+
+#suite
+
+tao<-subset(alldf,alldf$kind==2)
+taor<-tapply(tao$price,tao$section_name,mean)
+View(taor)
+
+#shared-suite
+
+stao<-subset(alldf,alldf$kind==3)
+staor<-tapply(stao$price,stao$section_name,mean)
+View(staor)
+
+#room
+
+ya<-subset(alldf,alldf$kind==4)
+yar<-tapply(ya$price,ya$section_name,mean)
+View(yar)
+
+#car parking space
+
+park<-subset(alldf,alldf$kind==8)
+parkr<-tapply(park$price,park$section_name,mean)
+View(parkr)
+
+meandf<-data.frame(rentalave,homer,taor,staor,yar,parkr)
+
+
+colnames(meandf)<-c("總體平均租金","整層住家","獨立套房","分租套房","雅房","車位")
+
+View(meandf)
+
+```
+
+```{r}
+
+#How different types of building affect region rental  
+
+#simple regression 
+
+model1<-lm(meandf$總體平均租金~ meandf$整層住家+meandf$獨立套房+meandf$分租套房+meandf$雅房+meandf$車位)
+
+summary(model1)
+
+#We find out that apartment affect region rental the most
+
+#plot
+
+library(ggplot2)
+
+ggplot(meandf, aes(x = meandf$總體平均租金, y = meandf$整層住家))+ 
+  geom_point(size=0.8) +
+  stat_smooth(method = "lm", col = "#8E354A")
+
+
+
+```
+
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
