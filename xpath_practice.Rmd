@@ -1,0 +1,74 @@
+---
+title: "xpath practice"
+author: "TK Huang"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+
+
+library(httr)
+library(xml2)
+
+url <- "http://search.appledaily.com.tw/appledaily/search"
+res <- POST(url, body = list(searchMode = "Adv",
+							searchType = "text",
+							querystrA = "年金",
+							select = "AND",
+							source = "",
+							sdate = "2003-05-02",
+							edate = "2016-11-04"))
+doc.str <- content(res, "text") # convert result to string
+write(doc.str, "test.html") # for testing
+doc <- read_html(doc.str) # convert string to xml_nodes
+doc
+
+
+
+
+```
+
+
+```{r}
+# Practice: Get the path of all links
+
+linkshref<-'//*[@id="result"]/li/div/h2/a'
+href<-xml_attr(xml_find_all(doc,linkshref),'href')
+href
+```
+
+
+```{r}
+# Practice: Get back the news of the first link
+href1<-xml_attr(xml_find_first(doc,linkshref),'href')
+href1
+
+```
+
+
+```{r}
+# Practice: Get the title of the news
+linkstitle<-xml_text(xml_find_all(doc,linkshref),'>')
+linkstitle
+
+```
+
+
+```{r}
+# Practice: Get the content of the news
+linkcontent<-'//*[@id="result"]/li/div/p/text()'
+content<-xml_text(xml_find_all(doc,linkcontent))
+content
+
+```
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
