@@ -1,0 +1,119 @@
+---
+title: "Taipei city rooftop add-ons"
+author: "TK Huang"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+
+#require packages
+library(httr)
+library(jsonlite)
+library(rvest)
+library(stringr)
+options(stringsAsFactors = F)
+
+```
+
+```{r}
+
+#url of 591 rental website
+
+url591<-'https://rent.591.com.tw/home/search/rsList?is_new_list=1&type=1&kind=0&searchtype=1&region=1&rentprice=0&pattern=0&area=0,0&firstRow=0&totalRows=9488'
+
+doc <- GET(url591)
+doc
+
+df<-fromJSON(content(doc, "text"))
+View(df$data$data)
+
+#data we need store in df$data$data
+
+
+```
+
+
+```{r}
+#Every querry has only 30 rows of data, so we need to querry from the url repeatedly 
+#set a emty dataframe
+
+result <- data.frame(
+  floorinfo = character(0),
+  rental = character(0),
+  administration = character(0)
+)
+
+
+#set a loop
+
+que<-c(seq(from=0, to=9488, by=30))
+
+for(i in que){
+  url591<- paste0('https://rent.591.com.tw/home/search/rsList?is_new_list=1&type=1&kind=0&searchtype=1&region=1&rentprice=0&pattern=0&area=0,0&firstRow=',i,'&totalRows=9510')
+  doc <- GET(url591)
+  df<- fromJSON(content(doc, "text"))
+  t.df<- data.frame(
+    floorinfo <- df$data$data$floorInfo,
+    rental<-df$data$data$price,
+    administration<-df$data$data$sectionname)
+  result<-rbind(result,t.df)
+  print(i)
+}
+
+View(result)
+
+
+```
+
+```{r}
+#reset names of columns
+colnames(result)<-c("floorinfo","rental","ad")
+
+#extract data with rooftop add-ons
+extrafl<- grepl('頂樓加蓋',result$floorinfo)
+
+#use tapply to find out 
+tapply(extrafl,result$ad,sum)
+
+#rental of rooftop add-ons
+
+result.exfl<-subset(result,extrafl)
+result.exfl
+
+```
+
+
+```{r}
+#visualization
+
+library(ggplot2)
+
+extrafl.ad<-tapply(extrafl,result$ad,sum)
+extrafl.ad<-as.data.frame(extrafl.ad)
+class(extrafl.ad)
+
+#reorganize the dataframe
+ad<-rownames(extrafl.ad)
+extrafl.ad<-cbind(ad,extrafl.ad)
+rownames(extrafl.ad)<-NULL
+colnames(extrafl.ad)<-c('ad','extrafl')
+View(extrafl.ad)
+
+ggplot(extrafl.ad,aes(ad,extrafl))+geom_bar(fill='#ED784A', alpha=0.7 ,stat = 'identity')
+
+#We can see there are more rooftop add-ons rentals in Neihu, Zongshan & Xinyi!
+
+
+```
+
+
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
